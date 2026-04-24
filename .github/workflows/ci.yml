@@ -1,0 +1,90 @@
+###############################################################################
+# CareNest Frontend — CI/CD Pipeline
+#
+# Triggers on push to main branch or version tags (v*)
+# Calls reusable workflows from carenest-template in strict order:
+#   ① SonarQube → ② Build → ③ Snyk → ④ Docker+Trivy+Push → ⑤ Approval → ⑥ CD
+#
+# SPECIAL: Frontend uses has-build-step: true (Vite build)
+# Docker uses multi-stage: Node (build) → Nginx (serve)
+###############################################################################
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Stage 1: SonarQube Analysis ──────────────────────────
+  sonarqube:
+    name: "① SonarQube"
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-sonarqube.yml@main
+    with:
+      project-key: carenest-frontend
+      sources: src
+    secrets:
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # ── Stage 2: Install Dependencies & Build ────────────────
+  # Frontend REQUIRES the build step (Vite → dist/)
+  build:
+    name: "② Build"
+    needs: [sonarqube]
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-ci.yml@main
+    with:
+      node-version: "20"
+      has-build-step: true
+
+  # ── Stage 3: Snyk Dependency Scan ────────────────────────
+  snyk:
+    name: "③ Snyk Scan"
+    needs: [build]
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-build-snyk.yml@main
+    with:
+      node-version: "20"
+      severity-threshold: high
+    secrets:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # ── Stage 4: Docker Build + Trivy Scan + Push ────────────
+  # Uses the existing multi-stage Dockerfile (Node → Nginx)
+  docker:
+    name: "④ Docker"
+    needs: [snyk]
+    if: github.event_name == 'push'
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-docker.yml@main
+    with:
+      image-name: carenest-frontend
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  # ── Stage 5: Approval Gate (production only) ─────────────
+  approval:
+    name: "⑤ Approval"
+    needs: [docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-approval-gate.yml@main
+    with:
+      environment: production
+
+  # ── Stage 6: CD — Update Manifest Repo ───────────────────
+  deploy:
+    name: "⑥ Deploy"
+    needs: [approval]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    uses: jayadevarun2003/carenest-template/.github/workflows/template-cd.yml@main
+    with:
+      service-name: frontend
+      image-tag: ${{ needs.docker.outputs.image-tag }}
+      manifest-repo: jayadevarun2003/carenest-manifest
+    secrets:
+      GH_PAT: ${{ secrets.GH_PAT }}
