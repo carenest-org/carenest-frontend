@@ -80,7 +80,7 @@ jobs:
   # ── Stage 6: CD — Update Manifest Repo ───────────────────
   deploy:
     name: "⑥ Deploy"
-    needs: [approval]
+    needs: [approval, docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     uses: carenest-org/carenest-template/.github/workflows/template-cd.yml@main
     with:
