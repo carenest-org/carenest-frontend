@@ -130,3 +130,4 @@ docker build -t carenest-frontend .
 docker run -p 80:80 carenest-frontend
 ```
 # trigger pipeline Sat Apr 25 10:53:05 UTC 2026
+# sonarqube ip update Sat Apr 25 18:59:09 UTC 2026
