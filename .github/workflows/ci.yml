@@ -25,7 +25,7 @@ jobs:
   # ── Stage 1: SonarQube Analysis ──────────────────────────
   sonarqube:
     name: "① SonarQube"
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-sonarqube.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-sonarqube.yml@main
     with:
       project-key: carenest-frontend
       sources: src
@@ -38,7 +38,7 @@ jobs:
   build:
     name: "② Build"
     needs: [sonarqube]
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-ci.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-ci.yml@main
     with:
       node-version: "20"
       has-build-step: true
@@ -47,7 +47,7 @@ jobs:
   snyk:
     name: "③ Snyk Scan"
     needs: [build]
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-build-snyk.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-build-snyk.yml@main
     with:
       node-version: "20"
       severity-threshold: high
@@ -60,7 +60,7 @@ jobs:
     name: "④ Docker"
     needs: [snyk]
     if: github.event_name == 'push'
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-docker.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-docker.yml@main
     with:
       image-name: carenest-frontend
     secrets:
@@ -72,7 +72,7 @@ jobs:
     name: "⑤ Approval"
     needs: [docker]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-approval-gate.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-approval-gate.yml@main
     with:
       environment: production
 
@@ -81,10 +81,10 @@ jobs:
     name: "⑥ Deploy"
     needs: [approval]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    uses: jayadevarun2003/carenest-template/.github/workflows/template-cd.yml@main
+    uses: carenest-org/carenest-template/.github/workflows/template-cd.yml@main
     with:
       service-name: frontend
       image-tag: ${{ needs.docker.outputs.image-tag }}
-      manifest-repo: jayadevarun2003/carenest-manifest
+      manifest-repo: carenest-org/carenest-manifest
     secrets:
       GH_PAT: ${{ secrets.GH_PAT }}
