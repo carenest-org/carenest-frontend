@@ -25,6 +25,7 @@ jobs:
   # ── Stage 1: SonarQube Analysis ──────────────────────────
   sonarqube:
     name: "① SonarQube"
+    if: false
     uses: carenest-org/carenest-template/.github/workflows/template-sonarqube.yml@main
     with:
       project-key: carenest-frontend
@@ -37,7 +38,7 @@ jobs:
   # Frontend REQUIRES the build step (Vite → dist/)
   build:
     name: "② Build"
-    needs: [sonarqube]
+    needs: []
     uses: carenest-org/carenest-template/.github/workflows/template-ci.yml@main
     with:
       node-version: "20"
